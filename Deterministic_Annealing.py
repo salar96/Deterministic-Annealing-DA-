@@ -23,12 +23,13 @@ class DA:
         m, n = np.shape(X)
         l = np.sum(X * X, axis = 0, keepdims = True)
         l_sqrt = np.sqrt(l)
-        X_norm = divide (X, l_sqrt)
+        X_norm = divide (X.copy(), l_sqrt)
         self.d,self.n=X.shape
         if self.NORMALIZE:
-            self.X=X_norm
+            self.X=X_norm.copy()
         else:
-            self.X=X        
+            self.X=X.copy()        
+        self.XU=X.copy()
         if (self.X<0).any() and self.NORM=='KL':
             raise Exception('Your input matrix contains negative values. Try using another norm')
         self.Data_points=np.repeat(self.X[:,:,np.newaxis],self.K,axis=2)
@@ -125,6 +126,7 @@ class DA:
                     counter=counter+1
             com=(np.count_nonzero(np.abs(P-1)<1e-5)/self.n)
             if (1-com)<self.BETA_TOL:
+            #if Beta>self.BETA_TOL:
                 time=dt.default_timer()-start
                 print(f"Beta Max reached: {Beta} completeness:{com} time:{time}")
                 break
@@ -134,11 +136,12 @@ class DA:
             if self.VERBOS:
                 print(f'Beta: {Beta} completeness:{com}')
         self.P=np.round(P)
-        w=np.round(self.P.copy())
+        w=np.zeros_like(P)
         for i in range(self.n):
-            id=np.where(w[:,i]==1)[0]
+            id=np.where(P[:,i]==1)[0]
             norm1 = np.linalg.norm(self.Y[:,id])
-            w[id,i]=(self.X[:,i].T @ self.Y[:,id])/norm1/norm1
+            if norm1>0:
+                w[id,i]=(self.XU[:,i].T @ self.Y[:,id])/norm1/norm1
         self.P=w    
         return self.Y,self.P
     def plot(self,size=(12,10),random_color=False):
@@ -146,7 +149,7 @@ class DA:
         plt.scatter(self.X[0,:],self.X[1,:],marker='.');plt.grid()
         plt.scatter(self.Y[0,:],self.Y[1,:],marker='*',c='red',linewidths=2)
     def return_cost(self):
-        return np.linalg.norm(self.X-(self.Y@self.P),'fro')/np.linalg.norm(self.X,'fro')
+        return np.linalg.norm(self.XU-(self.Y@self.P),'fro')/np.linalg.norm(self.XU,'fro')
     
     
     
